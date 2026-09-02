@@ -149,36 +149,74 @@ function App() {
   const hasProfile = completion === 100;
   const metrics = useMemo(() => {
     if (!result) return [];
-    const bmi = result.bmi_data || {};
-    const water = result.water_data || {};
-    const macro = result.macro_data || {};
+
+    // Read metrics from the API response first.
+    // The fallback calculations below keep the dashboard populated even
+    // if the final SSE payload does not contain the metric objects.
+    const response = result?.data && typeof result.data === 'object' ? result.data : result;
+    const bmi = response?.bmi_data || result?.bmi_data || {};
+    const water = response?.water_data || result?.water_data || {};
+    const macro = response?.macro_data || result?.macro_data || {};
+
+    const weight = Number(profile.weight_kg);
+    const height = Number(profile.height_cm);
+    const age = Number(profile.age);
+    const gender = String(profile.gender || '').toLowerCase();
+
+    const validWeight = Number.isFinite(weight) && weight > 0;
+    const validHeight = Number.isFinite(height) && height > 0;
+    const validAge = Number.isFinite(age) && age > 0;
+
+    // Fallback values use the same standard calculations used by the
+    // fitness tools. API values always take priority when available.
+    const fallbackBmi = validWeight && validHeight
+      ? Number((weight / ((height / 100) ** 2)).toFixed(2))
+      : null;
+
+    const fallbackBmr = validWeight && validHeight && validAge
+      ? Number((10 * weight + 6.25 * height - 5 * age + (gender === 'female' ? -161 : 5)).toFixed(2))
+      : null;
+
+    const fallbackWater = validWeight
+      ? Number((weight * 0.035).toFixed(2))
+      : null;
+
+    const fallbackProtein = validWeight
+      ? Number((weight * 2).toFixed(2))
+      : null;
+
+    const bmiValue = bmi.bmi_value ?? bmi.bmi ?? fallbackBmi;
+    const bmrValue = bmi.bmr ?? bmi.basal_metabolic_rate ?? fallbackBmr;
+    const waterValue = water.water_intake_liters ?? water.water_liters ?? water.daily_water_liters ?? fallbackWater;
+    const proteinValue = macro.protein_g ?? macro.protein ?? fallbackProtein;
+
     return [
-        {
-          label: 'BMI',
-          value: bmi.bmi_value ?? '—',
-          unit: '',
-          icon: 'target'
-        },
-        {
-          label: 'BMR',
-          value: bmi.bmr ?? '—',
-          unit: bmi.bmr != null ? ' kcal' : '',
-          icon: 'bolt'
-        },
-        {
-          label: 'Hydration',
-          value: water.water_intake_liters ?? '—',
-          unit: water.water_intake_liters != null ? ' L/day' : '',
-          icon: 'activity'
-        },
-        {
-          label: 'Protein',
-          value: macro.protein_g ?? '—',
-          unit: macro.protein_g != null ? ' g/day' : '',
-          icon: 'scale'
-        },
-      ];
-  }, [result]);
+      {
+        label: 'BMI',
+        value: bmiValue ?? '—',
+        unit: '',
+        icon: 'target'
+      },
+      {
+        label: 'BMR',
+        value: bmrValue ?? '—',
+        unit: bmrValue != null ? ' kcal' : '',
+        icon: 'bolt'
+      },
+      {
+        label: 'Hydration',
+        value: waterValue ?? '—',
+        unit: waterValue != null ? ' L/day' : '',
+        icon: 'activity'
+      },
+      {
+        label: 'Protein',
+        value: proteinValue ?? '—',
+        unit: proteinValue != null ? ' g/day' : '',
+        icon: 'scale'
+      },
+    ];
+  }, [result, profile.weight_kg, profile.height_cm, profile.age, profile.gender]);
 
   const payload = (query) => ({
     session_id: sessionId,
@@ -228,7 +266,7 @@ function App() {
 
   return <div className="app">
     <header className="topbar">
-      <div className="brand"><div className="brand-mark"><Icon name="logo" size={22}/></div><div><strong>FitForge <span>AI</span></strong><small>Personal Fitness Coach</small></div></div>
+      <div className="brand"><div className="brand-mark"><Icon name="logo" size={22}/></div><div><strong>AI Fitness Coach</strong><small>Personal Fitness Coach</small></div></div>
       <div className="top-actions">
         <div className="mode-switch" aria-label="Theme switcher"><button className={theme==='light'?'active':''} onClick={()=>setTheme('light')} title="Light mode"><Icon name="sun" size={15}/></button><button className={theme==='dark'?'active':''} onClick={()=>setTheme('dark')} title="Dark mode"><Icon name="moon" size={15}/></button></div>
         <button className="new-chat" onClick={newChat}><Icon name="plus" size={16}/> New chat</button>
@@ -259,7 +297,7 @@ function App() {
       {mobileProfile && <button className="scrim" onClick={()=>setMobileProfile(false)} aria-label="Close profile"/>}
 
       <section className="chat-area">
-        <div className="chat-header"><div className="coach-avatar"><Icon name="spark" size={20}/></div><div><strong>FitForge AI Coach</strong><span><i/> Online · Ready to help</span></div><div className="chat-header-actions"><button title="New conversation" onClick={newChat}><Icon name="refresh" size={17}/></button></div></div>
+        <div className="chat-header"><div className="coach-avatar"><Icon name="spark" size={20}/></div><div><strong>AI Fitness Coach</strong><span><i/> Online · Ready to help</span></div><div className="chat-header-actions"><button title="New conversation" onClick={newChat}><Icon name="refresh" size={17}/></button></div></div>
 
         <div className="chat-scroll" ref={chatScrollRef}>
           {messages.length === 0 ? <div className="welcome">
@@ -288,7 +326,7 @@ function App() {
       </section>
     </main>
 
-    <footer><span>FitForge AI · Personal fitness guidance</span><span>AI can make mistakes. Verify important health decisions with a qualified professional.</span></footer>
+    <footer><span>AI Fitness Coach · Personal fitness guidance</span><span>AI can make mistakes. Verify important health decisions with a qualified professional.</span></footer>
   </div>;
 }
 

@@ -153,11 +153,31 @@ function App() {
     const water = result.water_data || {};
     const macro = result.macro_data || {};
     return [
-      { label: 'BMI', value: bmi.bmi ?? bmi.value ?? '—', unit: '', icon: 'target' },
-      { label: 'BMR', value: bmi.bmr ?? bmi.basal_metabolic_rate ?? '—', unit: bmi.bmr ? ' kcal' : '', icon: 'bolt' },
-      { label: 'Hydration', value: water.water_liters ?? water.daily_water_liters ?? water.liters ?? '—', unit: water.water_liters || water.daily_water_liters || water.liters ? ' L/day' : '', icon: 'activity' },
-      { label: 'Protein', value: macro.protein_g ?? macro.protein ?? '—', unit: macro.protein_g || macro.protein ? ' g/day' : '', icon: 'scale' },
-    ];
+        {
+          label: 'BMI',
+          value: bmi.bmi_value ?? '—',
+          unit: '',
+          icon: 'target'
+        },
+        {
+          label: 'BMR',
+          value: bmi.bmr ?? '—',
+          unit: bmi.bmr != null ? ' kcal' : '',
+          icon: 'bolt'
+        },
+        {
+          label: 'Hydration',
+          value: water.water_intake_liters ?? '—',
+          unit: water.water_intake_liters != null ? ' L/day' : '',
+          icon: 'activity'
+        },
+        {
+          label: 'Protein',
+          value: macro.protein_g ?? '—',
+          unit: macro.protein_g != null ? ' g/day' : '',
+          icon: 'scale'
+        },
+      ];
   }, [result]);
 
   const payload = (query) => ({

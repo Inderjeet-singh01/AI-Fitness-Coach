@@ -1,6 +1,6 @@
 from langchain_core.prompts import ChatPromptTemplate
 from graph.state import AgentState
-from models.llm import get_llm
+from models.llm import call_llm, get_llm
 from memory.session_memory import format_chat_history
 
 
@@ -12,7 +12,7 @@ from memory.session_memory import format_chat_history
                   │
                   ▼
      state["user_query"] / state["user_profile"].query
-     state["chat_history"]
+     state["messages"]
                   │
                   ▼
         Format Previous Conversation
@@ -57,8 +57,8 @@ class GeneralFitnessTool:
         llm = get_llm(temperature=0.3, purpose="general")
 
         profile = state["user_profile"]
-        query = state.get("user_query") or profile.query
-        chat_history = format_chat_history(state.get("chat_history", []))
+        query = state.get("user_query") or ""
+        chat_history = format_chat_history(state.get("messages", []))
 
         prompt = ChatPromptTemplate.from_messages([
             ("system", (
@@ -97,7 +97,7 @@ class GeneralFitnessTool:
         ])
 
         chain = prompt | llm
-        response = chain.invoke({
+        response = call_llm(chain, {
             "history": chat_history,
             "age": profile.age,
             "gender": profile.gender,
@@ -107,4 +107,4 @@ class GeneralFitnessTool:
             "query": query
         })
 
-        return {"general_response": response.content.strip()}
+        return {"general_response": (response.content or "").strip()}

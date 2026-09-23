@@ -3,17 +3,14 @@
 > **An AI-powered personalized fitness planning system built with FastAPI, LangGraph, LangChain, Groq, and React.**
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-00C853?style=for-the-badge)](https://ai-fitness-coach-01.netlify.app/)
-[![Backend](https://img.shields.io/badge/API-Render-46E3B7?style=for-the-badge)](https://ai-fitness-coach-api-6b9h.onrender.com/)
-[![Frontend](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?style=for-the-badge)](https://react.dev/)
-[![Backend](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge)](https://fastapi.tiangolo.com/)
-[![AI](https://img.shields.io/badge/LLM-Groq%20%2F%20Llama-orange?style=for-the-badge)](https://groq.com/)
+
+[![API Docs](https://img.shields.io/badge/API-Docs-46E3B7?style=for-the-badge)](https://ai-fitness-coach-api-6b9h.onrender.com/docs)
 
 ## 🌐 Live Application
 
-**Try the application:**  
-https://ai-fitness-coach-01.netlify.app/
+Try it here: **https://ai-fitness-coach-01.netlify.app/**
 
-The application provides a personalized fitness planning experience where users enter their profile and fitness requirements, and the backend orchestrates specialized AI and calculation workflows to generate a structured fitness response.
+Enter your profile and a fitness question, and the backend orchestrates specialized AI and calculation workflows to generate a structured fitness response.
 
 ---
 
@@ -42,17 +39,21 @@ The final response is streamed to the frontend using **Server-Sent Events (SSE)*
 # ✨ Key Features
 
 ### 🤖 AI-Powered Fitness Planning
+
 Generates personalized fitness recommendations using a Groq-hosted LLM.
 
 ### 🧠 Multi-Agent / Graph-Based Architecture
+
 LangGraph is used to orchestrate a planner and specialized fitness workers rather than relying on one monolithic AI call.
 
 ### 📊 Deterministic Fitness Calculations
+
 Core numerical calculations such as BMI, BMR, hydration, calories, and macronutrients are handled through dedicated tools/workers.
 
 This keeps numerical outputs more controlled and reduces unnecessary dependence on LLM-generated arithmetic.
 
 ### 💬 Natural-Language Fitness Queries
+
 Users can ask questions such as:
 
 ```text
@@ -68,14 +69,17 @@ Suggest a home workout.
 ```
 
 ### ⚡ Real-Time Streaming
+
 The backend exposes a streaming endpoint and sends AI output to the React frontend using SSE.
 
 This improves perceived response time because the user does not have to wait for the entire response before seeing output.
 
 ### 📱 Responsive Web Interface
+
 React + Vite frontend designed for a clean interactive fitness-coaching experience.
 
 ### 📈 Personalized Metrics Dashboard
+
 The frontend displays key user metrics including:
 
 - BMI
@@ -84,6 +88,7 @@ The frontend displays key user metrics including:
 - Protein
 
 ### ☁️ Production Deployment
+
 The project is deployed using a separated frontend/backend architecture:
 
 ```text
@@ -174,8 +179,10 @@ The frontend collects information such as:
 
 ### 2. Frontend calls the backend
 
+The frontend creates a session once, keeps the profile in it via `PATCH`, and sends each chat message to:
+
 ```http
-POST /api/v1/generate-plan/stream
+POST /api/v1/sessions/{session_id}/chat/stream
 ```
 
 ### 3. FastAPI validates the request
@@ -227,21 +234,21 @@ The frontend parses the events and updates the interface in real time.
 
 # 🧩 Technology Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React |
-| Frontend Build Tool | Vite |
-| Backend | FastAPI |
-| Language | Python |
-| AI Orchestration | LangGraph |
-| LLM Framework | LangChain |
-| LLM Provider | Groq |
-| LLM | Llama-family model |
-| API Validation | Pydantic |
-| Streaming | Server-Sent Events (SSE) |
-| Deployment - Frontend | Netlify |
-| Deployment - Backend | Render |
-| Version Control | Git + GitHub |
+| Layer                 | Technology               |
+| --------------------- | ------------------------ |
+| Frontend              | React                    |
+| Frontend Build Tool   | Vite                     |
+| Backend               | FastAPI                  |
+| Language              | Python                   |
+| AI Orchestration      | LangGraph                |
+| LLM Framework         | LangChain                |
+| LLM Provider          | Groq                     |
+| LLM                   | Llama-family model       |
+| API Validation        | Pydantic                 |
+| Streaming             | Server-Sent Events (SSE) |
+| Deployment - Frontend | Netlify                  |
+| Deployment - Backend  | Render                   |
+| Version Control       | Git + GitHub             |
 
 ---
 
@@ -261,27 +268,24 @@ AI-Fitness-Coach/
 │   └── ...
 │
 ├── backend/
-│   ├── app/
-│   │   ├── api/
-│   │   │   └── ...
-│   │   ├── graph/
-│   │   │   └── workflow.py
-│   │   ├── tools/
-│   │   │   └── ...
-│   │   ├── schemas/
-│   │   │   └── ...
-│   │   ├── services/
-│   │   │   └── ...
-│   │   └── main.py
-│   │
-│   ├── requirements.txt
-│   └── ...
+│   ├── agents/          # Planner and aggregator agent logic
+│   ├── api/             # FastAPI routes
+│   ├── config/          # Settings (reads .env)
+│   ├── graph/           # LangGraph workflow + state
+│   ├── memory/          # Session memory
+│   ├── models/          # Data models
+│   ├── schemas/         # Pydantic request/response schemas
+│   ├── tools/           # Fitness tools/workers (diet, workout, gym, macro, general)
+│   ├── tests/
+│   ├── main.py          # FastAPI app entrypoint
+│   └── requirements.txt
 │
+├── .env.example
 ├── .gitignore
 └── README.md
 ```
 
-> File names can evolve as the project is maintained; the important separation is between the React client, FastAPI API layer, graph orchestration, schemas, services, and fitness tools.
+> File names can evolve as the project is maintained; the important separation is between the React client, FastAPI API layer, graph orchestration, schemas, and fitness tools.
 
 ---
 
@@ -306,32 +310,45 @@ Example:
 }
 ```
 
-## Generate Fitness Plan
+## Sessions and Chat
 
 ```http
-POST /api/v1/generate-plan/stream
+POST   /api/v1/sessions                              # create session (optional initial profile)
+PATCH  /api/v1/sessions/{session_id}/profile         # merge profile fields
+POST   /api/v1/sessions/{session_id}/chat/stream     # chat turn (SSE), body: {"message": "..."}
+GET    /api/v1/sessions/{session_id}/state           # runtime state (debug)
+DELETE /api/v1/sessions/{session_id}                 # clear session
+GET    /health
 ```
 
 ### Request
 
+Create a session (profile is optional and can be completed later with `PATCH .../profile`):
+
 ```json
 {
-  "session_id": "example-session",
-  "weight_kg": 75,
-  "height_cm": 175,
-  "gender": "male",
-  "age": 25,
-  "activity_level": "moderately_active",
-  "location": "India",
-  "query": "How many calories and protein should I consume?"
+  "profile": {
+    "weight_kg": 75,
+    "height_cm": 175,
+    "gender": "male",
+    "age": 25,
+    "activity_level": "moderately_active",
+    "location": "India"
+  }
 }
+```
+
+Then chat with only the message:
+
+```json
+{ "message": "How many calories and protein should I consume?" }
 ```
 
 ### Response
 
 The endpoint uses **Server-Sent Events (SSE)**.
 
-The stream can contain AI response chunks and ends with a final `done` event containing structured fitness data and the final report.
+The stream can contain AI response chunks and ends with a final `done` event containing this turn's structured fitness data, the final report, and a `status` of `success`, `needs_input`, `incomplete` or `error` (`success` only when the evaluator confirmed the goal was met).
 
 ---
 
@@ -386,16 +403,18 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Create a `.env` file:
+Create your `.env` file from the provided template (run from the project root):
 
-```env
-GROQ_API_KEY=your_groq_api_key
+```bash
+cp .env.example .env
 ```
+
+Then open `.env` and fill in your own values — see [Environment Variables](#-environment-variables) below.
 
 Run FastAPI:
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn main:app --reload
 ```
 
 Backend should be available at:
@@ -450,27 +469,57 @@ The Vite development server will provide the local frontend URL.
 
 # 🔐 Environment Variables
 
-Never commit API keys to GitHub.
+Never commit real API keys to GitHub. `.env` files are already excluded via `.gitignore`; only the `.env.example` templates are tracked.
 
-Recommended frontend configuration:
+## Backend (`.env` in the project root)
+
+Copy [`.env.example`](.env.example) to `.env` and fill in your own values:
+
+```bash
+cp .env.example .env
+```
+
+| Variable                    | Required | Description                                                                                        |
+| --------------------------- | -------- | -------------------------------------------------------------------------------------------------- |
+| `GROQ_API_KEY`              | ✅       | API key for Groq LLM inference. Get one at [console.groq.com/keys](https://console.groq.com/keys). |
+| `GROQ_MODEL`                | Optional | Main Groq model used for AI worker responses. Defaults to `openai/gpt-oss-120b`.                   |
+| `GROQ_ROUTER_MODEL`         | Optional | Lighter Groq model used for planning/routing. Defaults to `openai/gpt-oss-20b`.                    |
+| `SERPER_API_KEY`            | Optional | Powers location search for the gym-finder tool. Get one at [serper.dev](https://serper.dev/).      |
+| `GEOAPIFY_API_KEY`          | Optional | Powers geocoding for the gym-finder tool. Get one at [geoapify.com](https://www.geoapify.com/).    |
+| `MAX_OUTPUT_TOKENS`         | Optional | Output token cap for AI workers. Defaults to `700`.                                                |
+| `ROUTER_MAX_OUTPUT_TOKENS`  | Optional | Output token cap for the planner/router. Defaults to `700`.                                        |
+| `GENERAL_MAX_OUTPUT_TOKENS` | Optional | Output token cap for the general-assistant worker. Defaults to `450`.                              |
+| `GYM_MAX_OUTPUT_TOKENS`     | Optional | Output token cap for the gym-finder worker. Defaults to `450`.                                     |
+| `TEMPERATURE`               | Optional | LLM sampling temperature. Defaults to `0.2`.                                                       |
+| `MAX_REPLANS`               | Optional | Max replan cycles per chat turn. Defaults to `3`.                                                  |
+| `MAX_EXECUTION_STEPS`       | Optional | Max executor steps per chat turn. Defaults to `20`.                                                |
+
+`GEOAPIFY_API_KEY` and `SERPER_API_KEY` are only needed if you want the gym-finder tool's location search to work; the rest of the app runs fine without them.
+
+## Frontend (`frontend/.env`)
+
+Copy [`frontend/.env.example`](frontend/.env.example) to `frontend/.env`:
+
+```bash
+cd frontend
+cp .env.example .env
+```
+
+| Variable            | Required | Description                                                      |
+| ------------------- | -------- | ---------------------------------------------------------------- |
+| `VITE_API_BASE_URL` | ✅       | Base URL of the FastAPI backend, including the `/api/v1` prefix. |
+
+Local development:
 
 ```env
 VITE_API_BASE_URL=http://127.0.0.1:8000/api/v1
 ```
 
-For production:
+Production (e.g. Netlify):
 
 ```env
 VITE_API_BASE_URL=https://ai-fitness-coach-api-6b9h.onrender.com/api/v1
 ```
-
-Backend:
-
-```env
-GROQ_API_KEY=your_secret_key
-```
-
-Add `.env` to `.gitignore`.
 
 ---
 

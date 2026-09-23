@@ -7,22 +7,48 @@ def _section(title: str, body: str) -> str:
 
 
 class AggregatorAgent:
-    """Build a deterministic, consistently formatted final response."""
+    """Build a deterministic, consistently formatted final response.
+
+    Only results produced by the CURRENT turn are used; session-level
+    *_data left over from earlier turns never leak into an unrelated answer.
+    For each task the best result of this turn is shown (best_results), so a
+    failed retry can never blank out an earlier good attempt. Any status
+    other than success always carries an explanatory note.
+    """
 
     @staticmethod
     def compile_report(state: AgentState) -> dict:
-        query = state.get("user_query") or state["user_profile"].query
-        selected_tools = state.get("selected_tools", [])
-        general = state.get("general_response")
+        query = state.get("user_query") or ""
+        plan = state.get("plan") or []
+        results = state.get("tool_results") or {}
+        evaluation = state.get("evaluation") or {}
+        note = evaluation.get("user_message")
 
-        if selected_tools == ["general"] and general:
-            return {"final_report": general.strip()}
+        best = state.get("best_results") or {}
+        completed = {task["action"] for task in plan if task.get("status") == "completed"}
+        final_status = state.get("final_status") or evaluation.get("status")
+        if final_status != "success" and not note:
+            note = "Some parts of this request could not be completed or verified."
+
+        def turn_value(action: str, key: str):
+            if action in best:
+                return (best[action].get("result") or {}).get(key)
+            return (results.get(action) or {}).get(key) if action in completed else None
+
+        general = turn_value("general", "general_response")
+
+        if [task["action"] for task in plan] == ["general"] and general and not note:
+            report = general.strip()
+            return {
+                "final_report": report,
+                "messages": [{"role": "assistant", "content": report}],
+            }
 
         sections = []
 
-        bmi = state.get("bmi_data")
-        water = state.get("water_data")
-        macros = state.get("macro_data")
+        bmi = turn_value("bmi", "bmi_data")
+        water = turn_value("water", "water_data")
+        macros = turn_value("macros", "macro_data")
         if bmi or water or macros:
             lines = []
             if bmi:
@@ -37,20 +63,34 @@ class AggregatorAgent:
                 lines.append(f"- **Water:** {water.get('water_intake_liters', '—')} L/day")
             sections.append(_section("Your Numbers", "\n".join(lines)))
 
-        if state.get("diet_plan"):
-            sections.append(_section("Nutrition Plan", state["diet_plan"]))
+        diet_plan = turn_value("diet", "diet_plan")
+        if diet_plan:
+            sections.append(_section("Nutrition Plan", diet_plan))
 
-        if state.get("workout_plan"):
-            sections.append(_section("Workout Plan", state["workout_plan"]))
+        workout_plan = turn_value("workout", "workout_plan")
+        if workout_plan:
+            sections.append(_section("Workout Plan", workout_plan))
 
-        if state.get("gym_data"):
-            sections.append(_section("Nearby Gyms", state["gym_data"]))
+        gym_data = turn_value("gym", "gym_data")
+        if gym_data:
+            sections.append(_section("Nearby Gyms", gym_data))
 
-        if general and "general" in selected_tools:
+        if general:
             sections.append(_section("Coach Guidance", general))
 
+        if note:
+            sections.append(_section("Note", note))
+
         if not sections:
-            return {"final_report": "I’m ready to help. Tell me what fitness goal you want to work on."}
+            report = "I’m ready to help. Tell me what fitness goal you want to work on."
+            return {
+                "final_report": report,
+                "messages": [{"role": "assistant", "content": report}],
+            }
 
         intro = f"Here’s a focused response for: **{query}**."
-        return {"final_report": intro + "\n\n" + "\n\n".join(sections)}
+        report = intro + "\n\n" + "\n\n".join(sections)
+        return {
+            "final_report": report,
+            "messages": [{"role": "assistant", "content": report}],
+        }

@@ -2,7 +2,7 @@ from langchain_core.prompts import ChatPromptTemplate
 
 from graph.state import AgentState
 from memory.session_memory import format_chat_history
-from models.llm import get_llm
+from models.llm import call_llm, get_llm
 
 
 class WorkoutGeneratorTool:
@@ -12,14 +12,14 @@ class WorkoutGeneratorTool:
     def generate_workout(state: AgentState) -> dict:
         llm = get_llm()
         profile = state["user_profile"]
-        history = format_chat_history(state.get("chat_history", []))
+        history = format_chat_history(state.get("messages", []))
+        replan_feedback = state.get("replan_feedback") or "None"
 
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert fitness coach specialized in personalized workout plans.
 
-Generate a workout response ONLY when the CURRENT user message explicitly requests one.
 Respect the user's profile, activity level and constraints. Do not hallucinate personal details or medical conditions.
-Keep the workout realistic, practical, structured and concise."""),
+Keep the workout realistic, practical, structured and concise (under about 350 words)."""),
             ("user", """Recent Conversation History:
 {history}
 
@@ -31,17 +31,21 @@ User Profile:
 - Activity Level: {activity_level}
 
 Current User Message:
-{query}"""),
+{query}
+
+Previous Attempt Issues To Fix (if any):
+{replan_feedback}"""),
         ])
 
-        response = (prompt | llm).invoke({
+        response = call_llm(prompt | llm, {
             "history": history,
             "age": profile.age,
             "gender": profile.gender,
             "weight": profile.weight_kg,
             "height": profile.height_cm,
             "activity_level": profile.activity_level,
-            "query": profile.query,
+            "query": state.get("user_query") or "",
+            "replan_feedback": replan_feedback,
         })
 
         return {"workout_plan": response.content}

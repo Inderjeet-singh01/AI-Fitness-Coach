@@ -35,6 +35,12 @@ def root_status_check():
         "llm_provider": "Groq (Llama-3)"
     }
 
+
+@app.get("/health", tags=["Root"])
+def health_check():
+    """Simple health endpoint."""
+    return {"status": "healthy"}
+
 if __name__ == "__main__":
     # Runs the ASGI server programmatically
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -4,7 +4,7 @@ FastAPI + LangGraph + Groq backend for the FitForge AI chatbot.
 
 ## What changed
 
-- SSE streaming endpoint: `POST /api/v1/generate-plan/stream`
+- Session API; chat is SSE-only: `POST /api/v1/sessions/{session_id}/chat/stream` (see RUN.md for all endpoints).
 - Output-token caps for every LLM call.
 - `openai/gpt-oss-20b` for routing, general chat, and gym presentation.
 - `openai/gpt-oss-120b` for diet/workout generation.

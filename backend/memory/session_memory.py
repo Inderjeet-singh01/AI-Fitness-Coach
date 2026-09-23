@@ -1,32 +1,14 @@
-from collections import defaultdict, deque
-from typing import Dict, List, Deque
-
-
-class SessionMemoryStore:
-    """Small in-memory conversation store for the current prototype."""
-
-    _store: Dict[str, Deque[Dict[str, str]]] = defaultdict(lambda: deque(maxlen=12))
-
-    @classmethod
-    def get_history(cls, session_id: str) -> List[Dict[str, str]]:
-        if not session_id:
-            return []
-        return list(cls._store[session_id])
-
-    @classmethod
-    def append_message(cls, session_id: str, role: str, content: str) -> None:
-        if not session_id or not content:
-            return
-        cls._store[session_id].append({"role": role, "content": content})
-
-    @classmethod
-    def clear_session(cls, session_id: str) -> None:
-        if session_id in cls._store:
-            del cls._store[session_id]
+from typing import Dict, List
 
 
 def format_chat_history(chat_history: List[Dict[str, str]], max_messages: int = 6, max_chars: int = 3500) -> str:
-    """Return a compact recent history to keep every LLM request bounded."""
+    """Return a compact recent history to keep every LLM request bounded.
+
+    `chat_history` is the runtime `messages` list from LangGraph checkpointed
+    state (list of {"role": ..., "content": ...} dicts) for the current
+    session/thread. Runtime persistence itself is handled by the graph's
+    checkpointer, not by this module.
+    """
     if not chat_history:
         return "No previous conversation history."
 

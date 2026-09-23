@@ -4,7 +4,7 @@ import requests
 from typing import Optional, List, Dict, Any, Tuple
 from langchain_core.prompts import ChatPromptTemplate
 from graph.state import AgentState
-from models.llm import get_llm
+from models.llm import call_llm, get_llm
 from memory.session_memory import format_chat_history
 from config.settings import settings
 
@@ -352,8 +352,8 @@ class GymFinderTool:
         Tries multiple location candidates and multiple search radii.
         """
         profile = state["user_profile"]
-        query = state.get("user_query") or profile.query
-        chat_history = format_chat_history(state.get("chat_history", []))
+        query = state.get("user_query") or ""
+        chat_history = format_chat_history(state.get("messages", []))
 
         # --------------------------------------------------
         # Check API key configuration
@@ -458,7 +458,7 @@ class GymFinderTool:
         ])
 
         chain = prompt | llm
-        response = chain.invoke({
+        response = call_llm(chain, {
             "history": chat_history,
             "query": query,
             "resolved_location": selected_geocode_display or selected_location_label or "Unknown Location",

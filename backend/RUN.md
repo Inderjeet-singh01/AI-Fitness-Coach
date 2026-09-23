@@ -77,54 +77,51 @@ http://127.0.0.1:8000/redoc
 
 ## 7. Sample API Request
 
-### Endpoint
+### Endpoints
 
 ```http
-POST /generate-plan
+POST   /api/v1/sessions                              # create session (optional initial profile)
+PATCH  /api/v1/sessions/{session_id}/profile         # merge profile fields
+POST   /api/v1/sessions/{session_id}/chat/stream     # chat turn (SSE), body: {"message": "..."}
+GET    /api/v1/sessions/{session_id}/state           # runtime state (debug)
+DELETE /api/v1/sessions/{session_id}                 # clear session
+GET    /health
 ```
 
-### Request Body
+### Example
 
-```json
-{
-  "age": 25,
-  "gender": "male",
-  "weight": 80,
-  "height": 176,
-  "goal": "fat loss",
-  "activity_level": "moderately_active",
-  "query": "Create a complete fat loss plan"
-}
+```bash
+SID=$(curl -s -X POST http://127.0.0.1:8000/api/v1/sessions -H 'Content-Type: application/json' \
+  -d '{"profile": {"age": 25, "gender": "male", "weight_kg": 80, "height_cm": 176, "activity_level": "moderately_active"}}' \
+  | python3 -c 'import sys, json; print(json.load(sys.stdin)["session_id"])')
+
+curl -N -X POST http://127.0.0.1:8000/api/v1/sessions/$SID/chat/stream -H 'Content-Type: application/json' \
+  -d '{"message": "Create a complete fat loss plan"}'
 ```
+
+The profile lives in the session (LangGraph checkpoint, `thread_id == session_id`), so chat
+requests only send the message. The final `done` event's `status` is one of
+`success | needs_input | incomplete | error`.
 
 ---
 
 ## 8. Expected Flow
 
 ```text
-User Request
+User message
       │
       ▼
-Planner Agent
+Planner (goal + success criteria + validated task plan)
       │
       ▼
-Tool Selection
-      │
-      ├── BMI Tool
-      ├── Water Tool
-      ├── Macro Tool
-      ├── Diet Generator
-      ├── Workout Generator
-      └── Gym Finder
-      │
+Executor ──decide──> worker (bmi / water / macros / diet / workout / gym / general)
+   ▲                    │ observe + update state
+   └────────────────────┘
+      │ hand-off
       ▼
-Supervisor Agent
-      │
-      ▼
-Aggregator Agent
-      │
-      ▼
-Final Fitness Report
+Evaluator ── continue ──> Executor
+          ── replan ────> Replanner (new LLM plan, keeps valid results) ──> Executor
+          ── complete ──> Aggregator ──> final response
 ```
 
 ---

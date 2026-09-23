@@ -19,7 +19,8 @@ For Netlify, set the same variable to your public HTTPS API base, then rebuild.
 
 ## UI behavior
 
-- Only the right chat pane scrolls.
-- Profile pane remains stable while the conversation grows.
-- Streaming text is rendered with a subtle cursor and is replaced by a clean formatted final report.
-- Dark/light mode is available in the header.
+- Left sidebar navigation: Chat, My Plan, Profile, Settings (collapses to a drawer on mobile).
+- Chat streams live agent activity ("Understanding your goal", "Creating your diet plan", …) driven directly by the backend's SSE phase events, then replaces it with a formatted final report.
+- My Plan reads the session's latest calculated/generated data (`GET /sessions/{id}/state`) so results persist outside the chat log.
+- Profile edits call the existing `PATCH /sessions/{id}/profile` endpoint.
+- Theme supports Light / Dark / System, set in Settings or the top bar.
